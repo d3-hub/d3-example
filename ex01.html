@@ -326,81 +326,30 @@
     .attr('fill', 'black')
     .style("font-size","14pt")
 
-  addTemporaryDayAndMoveTo(barLables, function(maxDur) {
+  addTemporaryDayAndMoveTo()
 
-    var counter = 0;
-
-    // 这里的bars是下面的三个柱子bar
-    bars.transition()
-      .duration(maxDur)
-      .attr('y', d => d.y) // 最终高度已经提前计算好了
-      .attr('height', d => d.h)
-      .on('end', function() {
-        console.log('counter', counter)
-        counter ++;
-        // 这里的作用是因为是哪个柱子, 等触发到第三次的时候即柱图高度变化结束，这个时候处理文字数量
-        if(counter === 2) {
-          // statsView 是下面的柱图容器
-          // 这里的做法似乎是等到柱图的高度变化动画到最后在柱子上加上数量text
-          statsView.selectAll('text').each(function(p,j) {
-            d3.select(this.parentNode).append('text')
-              .attr("x",  p.x + (p.w/2))
-              .attr("y", p.y + (p.h/2) )
-              .attr("text-anchor", "middle")
-              .text(p.length)
-              .attr('font-size','14px')
-              .transition()
-              .duration(2000)
-              .attrTween("fill", () => d3.interpolateRgb('transparent', 'black'))
-             // 这里对文字颜色做一个差值动画，从透明到黑色(其实也可以用透明度)
-          })
-        }
-      })
-  });
-
-
-
-  function addTemporaryDayAndMoveTo(barLables, moveCallback) {
+  // 动画总效果
+  function addTemporaryDayAndMoveTo() {
     const positions = []
     //http://stackoverflow.com/questions/6858479/rectangle-coordinates-after-transform
-
     // 通过这个方法获取到每个rect的真实位置属性等
     yearView.selectAll('rect').each(function(d,i) {
-
       // 获取每一个rect在真个svg的真实坐标位置，d.x，d.y只是相对的偏移位置
-      var pos = getRelPos(this, svg)
-      pos.cx = pos.x + (dayWidth / 2)
-//      pos.cx = d.x
-      pos.cy = pos.y + (dayHeight / 2)
-//      pos.cy = d.y
+      const pos = getRelPos(this, svg)
       pos.color = d3.select(this).attr('fill')
       pos.type = d.type
       positions.push(pos)
     })
 
-    console.log('-----positions', positions)
-
-    var textPos = {};
-
-
-    statsView.selectAll('text').each( function(d) {
-      //console.log(d)
-      textPos[d.type] = d;
-    })
-
-    console.log('---textPos', textPos)
-
+    const textPos = {}
+    statsView.selectAll('text').each(d => textPos[d.type] = d)
 
     const tempG = svg.append('g').attr('class', 'tempG')
 
-    //var tempPos = getRelPos(circpack.node(), svg);
-    //var counter = 0;
-    var counter = false;
-    var maxDur = -Infinity;
+    let counter = false;
+    let maxDur = -Infinity
 
-    console.log('-----maxDur', maxDur)
-
-    var delayScale = d3.scaleLinear()
+    const delayScale = d3.scaleLinear()
       .domain([0, positions.length])
       .range([300,2000]);
 
@@ -438,14 +387,46 @@
          * 因为这里end会响应几百次, 但是通知bar高度变化只需要一次就行了
          */
         if(!counter) {
-          moveCallback(maxDur);
+          transitionBar(maxDur);
           counter = true;
         }
       })
       .remove()
-
   }
 
+  // bar的高度变化以及显示数量
+  function transitionBar(maxDur) {
+    var counter = 0;
+
+    // 这里的bars是下面的三个柱子bar
+    bars.transition()
+      .duration(maxDur)
+      .attr('y', d => d.y) // 最终高度已经提前计算好了
+      .attr('height', d => d.h)
+      .on('end', function() {
+        console.log('counter', counter)
+        counter ++;
+        // 这里的作用是因为是哪个柱子, 等触发到第三次的时候即柱图高度变化结束，这个时候处理文字数量
+        if(counter === 2) {
+          // statsView 是下面的柱图容器
+          // 这里的做法似乎是等到柱图的高度变化动画到最后在柱子上加上数量text
+          statsView.selectAll('text').each(function(p,j) {
+            d3.select(this.parentNode).append('text')
+              .attr("x",  p.x + (p.w/2))
+              .attr("y", p.y + (p.h/2) )
+              .attr("text-anchor", "middle")
+              .text(p.length)
+              .attr('font-size','14px')
+              .transition()
+              .duration(2000)
+              .attrTween("fill", () => d3.interpolateRgb('transparent', 'black'))
+            // 这里对文字颜色做一个差值动画，从透明到黑色(其实也可以用透明度)
+          })
+        }
+      })
+  }
+
+  // 获取rect在画布的真实位置
   function getRelPos(node, svg) {
     const m = node.getCTM()  // 似乎和getScreenCTM等价
     const pos = svg.node().createSVGPoint()

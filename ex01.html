@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+        body {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.14.1/moment.min.js"></script>
+<script>
+  /**
+   ***** 地址: https://codepen.io/ivan_bacher/pen/wWpPrQ?editors=0010
+   *
+   **** 目的: 这个动画效果很好
+   *
+   ***** 关注点：
+   - months.each()  为每个元素调用一次指定的方法, 这个api很好
+   - yearView.node() .node()方法返回第一个非空元素
+   - transition.attrTween 使用自定义插值器过渡属性
+   - d3.randomUniform - 均匀分布
+   */
+
+  const bankHolidays = {
+    '01/01/2016': true,
+    '03/17/2016': true,
+    '03/25/2016': true,
+    '03/08/2016': true,
+    '05/02/2016': true,
+    '06/06/2016': true,
+    '08/01/2016': true,
+    '10/31/2016': true,
+    '12/26/2016': true,
+    '12/27/2016': true
+  }
+
+  const myHolidays = {
+    '01/04/2016': true,
+    '01/05/2016': true,
+    '01/06/2016': true,
+    '03/07/2016': true,
+    '03/09/2016': true,
+    '03/10/2016': true,
+    '03/11/2016': true,
+    '04/13/2016': true,
+    '04/14/2016': true,
+    '04/15/2016': true,
+    '06/15/2016': true,
+    '06/16/2016': true,
+    '06/17/2016': true,
+    '08/09/2016': true,
+    '08/10/2016': true,
+    '08/11/2016': true,
+    '08/12/2016': true,
+    '08/15/2016': true,
+    '08/16/2016': true,
+    '08/17/2016': true,
+    '08/18/2016': true,
+    '08/19/2016': true,
+    '08/22/2016': true,
+    '08/23/2016': true,
+    '08/24/2016': true,
+    '08/25/2016': true,
+    '08/26/2016': true,
+    '08/08/2016': true,
+    '09/09/2016': true,
+    '09/12/2016': true,
+    '09/13/2016': true,
+    '10/10/2016': true,
+    '10/11/2016': true,
+    '12/28/2016': true,
+    '12/29/2016': true,
+    '12/30/2016': true
+  }
+
+  const date = moment('2016-01-01','YYYY-MM-DD')
+  const dataAll = []
+  const dataSplitByMonth = []
+
+  /**
+   * 获取2016年一年的数据
+   * bankH: 判断是否bank的holiday
+   * holiday: 判断是否是正常的holiday
+   * weekDay: 代表周一，关联下面的dayOfWeekX
+   */
+  while(date.calendar() !== '01/01/2017') {
+
+    dataAll.push({
+      date: date.calendar(),
+      weekDay: date.day(),
+      month: date.month() + 1,
+      day: date.date(),
+      year: date.year(),
+      bankH: bankHolidays[date.calendar()] === true,
+      holiday: myHolidays[date.calendar()] === true
+    })
+    date.add(1, 'day') // 前进一天
+  }
+
+  // 筛选出各月
+  dataSplitByMonth.push({name: 'Jan', month: 1, days: dataAll.filter(day=> day.month === 1)})
+  dataSplitByMonth.push({name: 'Feb', month: 2, days: dataAll.filter(day => day.month === 2)})
+  dataSplitByMonth.push({name: 'Mar', month: 3, days: dataAll.filter(day => day.month === 3)})
+  dataSplitByMonth.push({name: 'Apr', month: 4, days: dataAll.filter(day=> day.month === 4)})
+  dataSplitByMonth.push({name: 'May', month: 5, days: dataAll.filter(day=> day.month === 5)})
+  dataSplitByMonth.push({name: 'Jun', month: 6, days: dataAll.filter(day=> day.month === 6)})
+  dataSplitByMonth.push({name: 'Jul', month: 7, days: dataAll.filter(day=> day.month === 7)})
+  dataSplitByMonth.push({name: 'Aug', month: 8, days: dataAll.filter(day=> day.month === 8)})
+  dataSplitByMonth.push({name: 'Sep', month: 9, days: dataAll.filter(day=> day.month === 9)})
+  dataSplitByMonth.push({name: 'Oct', month: 10, days: dataAll.filter(day=> day.month === 10)})
+  dataSplitByMonth.push({name: 'Nov', month: 11, days: dataAll.filter(day=> day.month === 11)})
+  dataSplitByMonth.push({name: 'Dec', month: 12, days: dataAll.filter(day => day.month === 12)})
+
+
+
+  //每天的rect的宽高和间距
+  const dayWidth = 10
+  const dayHeight = 10
+  const dayPadding = 2
+  // 月间距
+  const monthPadding = 10
+  let currentMonthX = 0
+
+  const dayOfWeekX = {
+    0: 0,                                   // sunday
+    1: dayWidth + dayPadding,               // monday
+    2: (dayWidth * 2) + (dayPadding * 2),   // tuesday
+    3: (dayWidth * 3) + (dayPadding * 3),   // wednesday
+    4: (dayWidth * 4) + (dayPadding * 4),   // thursday
+    5: (dayWidth * 5) + (dayPadding * 5),   // friday
+    6: (dayWidth * 6) + (dayPadding * 6)    // saturday
+  }
+
+
+  // 为了确定每个rect的位置, 这个日期图写复杂了感觉
+  dataSplitByMonth.forEach( function(month) {
+
+    let yPos = 20 //start y
+    month.days.forEach(day => {
+      day.x = dayOfWeekX[day.weekDay]
+      day.y = yPos
+
+      if(day.weekDay === 6) {
+        yPos += dayHeight + dayPadding
+      }
+    })
+
+    month.dimensions = {
+      height: month.days[month.days.length-1].y + dayHeight,
+      width: (dayWidth * 7) + (dayPadding * 7)
+    }
+
+    month.x = currentMonthX
+    currentMonthX += month.dimensions.width + monthPadding
+  })
+
+
+
+
+  //vis
+  const width = document.getElementsByTagName('body')[0].clientWidth
+  const height = document.getElementsByTagName('body')[0].clientHeight
+
+  const svg = d3.select('body').append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('display', 'block')
+    .style('margin-right', 'auto')
+    .style('margin-left', 'auto')
+    .style('background-color', '#F8FFE5')
+
+  const yearView = svg.append('g')
+
+
+  const months = yearView.selectAll('g')
+    .data(dataSplitByMonth)
+    .enter()
+    .append('g')
+    .attr('transform', d => `translate(${d.x}, 0)`)
+
+  console.log('-------dataSplitByMonth', dataSplitByMonth)
+
+  // 构建上面日历图部分
+  months.each(function(node,i) {
+
+    // 每个月的rect
+    d3.select(this)  // 这里的this指的是每个month g容器
+      .selectAll('rect')
+      .data(node.days)
+      .enter()
+      .append('rect')
+      .attr('height', dayWidth)
+      .attr('width', dayHeight)
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('fill', function(d) {
+        if(d.bankH || d.weekDay === 0 || d.weekDay === 6) {
+          return '#EF476F'
+        } else if(d.holiday) {
+          return '#FFC43D'
+        } else {
+          return '#1B9AAA'
+        }
+      })
+
+    // 月份
+    d3.select(this)
+      .append('text')
+      .text(d => d.name)
+      .attr("text-anchor", "middle")
+      .attr('x', d => d.dimensions.width/2)
+      .attr('y', 10)
+      .style("font-size","14pt")
+  })
+
+  yearView.attr('transform', d => `translate(${((width - yearView.node().getBBox().width) /2)}, 20)`)
+
+
+  //vis 2
+  const marginStatsViewTop = 150
+  const categories = []
+
+  const statsView = svg.append('g')
+    .attr('transform', `translate(0, ${(yearView.node().getBBox().height + marginStatsViewTop)})`)
+    .attr('class', 'barG')
+
+  categories.push(dataAll.filter(day=> day.bankH === true || day.weekDay === 6 || day.weekDay === 0))
+  categories.push(dataAll.filter(day=> day.holiday === true))
+  categories.push(dataAll.filter( (day) => !day.holiday && !day.bankH && isWeekDay(day.weekDay)))
+
+  categories[0] = categories[0].map((el)=>{ el.type = 'A'; el.text = 'Off'; return el; })
+  categories[1] = categories[1].map((el)=>{ el.type = 'B'; el.text = 'Holidays'; return el; })
+  categories[2] = categories[2].map((el)=>{ el.type = 'C'; el.text = 'Working'; return el; })
+
+  categories.sort((a,b) => b.length - a.length)
+
+  console.log('----categories', categories)
+
+  const startX = (width - yearView.node().getBBox().width)/2
+  const barPadding = 80
+  const avalWidth = width - ((startX*2) + (barPadding*2))
+  const barWidth = avalWidth/3
+  const heightPlusBottomMarg = height - 100
+
+  const maxLength = d3.max([categories[0].length, categories[1].length, categories[2].length])
+  // calc bar heigth;
+  var startY = parseInt(statsView.attr('transform').split(',')[1].slice(0,-1));
+  const heightScale = d3.scaleLinear()
+    .domain([0, maxLength])
+    .range([0,heightPlusBottomMarg - startY]);
+
+  const yPosScale = d3.scaleLinear()
+    .domain([0, maxLength])
+    .range([heightPlusBottomMarg - startY, 0])
+
+  const statsData = [
+    {
+      x: startX,
+      y: yPosScale(categories[0].length),
+      w: barWidth,
+      h: heightScale(categories[0].length),
+      type: categories[0][0].type,
+      startY: yPosScale(3),
+      startH: heightScale(3),
+      text: categories[0][0].text,
+      offsetY: startY,
+      length: categories[0].length
+    },
+    {
+      x: startX + barWidth + barPadding,
+      y: yPosScale(categories[1].length),
+      w: barWidth,
+      h: heightScale(categories[1].length),
+      type: categories[1][0].type,
+      startY: yPosScale(3),
+      startH: heightScale(3),
+      text: categories[1][0].text,
+      offsetY: startY,
+      length: categories[1].length
+    },
+    {
+      x: startX + barWidth + barPadding + barWidth + barPadding,
+      y: yPosScale(categories[2].length),
+      w: barWidth,
+      h: heightScale(categories[2].length),
+      type: categories[2][0].type,
+      startY: yPosScale(3),
+      startH: heightScale(3),
+      text: categories[2][0].text,
+      offsetY: startY,
+      length: categories[2].length
+    }
+  ]
+
+  const bars = statsView.selectAll('rect')
+    .data(statsData)
+    .enter()
+    .append('rect')
+    .attr('x', d => d.x)
+    .attr('y', d => d.startY)
+    .attr('width', d => d.w)
+    .attr('height', d => d.startH)
+    .attr('fill', d => {
+      if(d.type === 'A') return '#EF476F';
+      if(d.type === 'B') return '#FFC43D';
+      if(d.type === 'C') return '#1B9AAA';
+    })
+
+  const barLables = statsView.selectAll('text')
+    .data(statsData)
+    .enter()
+    .append('text')
+    .attr("x", d => d.x + (d.w/2))
+    .attr("y", d => d.startY + d.startH + 20)
+    .attr("text-anchor", "middle")
+    .text(d =>  d.text)
+    .attr('fill', 'black')
+    .style("font-size","14pt")
+
+  addTemporaryDayAndMoveTo(barLables, function(maxDur) {
+
+    var counter = 0;
+
+    // 这里的bars是下面的三个柱子bar
+    bars.transition()
+      .duration(maxDur)
+      .attr('y', d => d.y) // 最终高度已经提前计算好了
+      .attr('height', d => d.h)
+      .on('end', function() {
+        console.log('counter', counter)
+        counter ++;
+        // 这里的作用是因为是哪个柱子, 等触发到第三次的时候即柱图高度变化结束，这个时候处理文字数量
+        if(counter === 2) {
+          // statsView 是下面的柱图容器
+          // 这里的做法似乎是等到柱图的高度变化动画到最后在柱子上加上数量text
+          statsView.selectAll('text').each(function(p,j) {
+            d3.select(this.parentNode).append('text')
+              .attr("x",  p.x + (p.w/2))
+              .attr("y", p.y + (p.h/2) )
+              .attr("text-anchor", "middle")
+              .text(p.length)
+              .attr('font-size','14px')
+              .transition()
+              .duration(2000)
+              .attrTween("fill", () => d3.interpolateRgb('transparent', 'black'))
+             // 这里对文字颜色做一个差值动画，从透明到黑色(其实也可以用透明度)
+          })
+        }
+      })
+  });
+
+
+
+  function addTemporaryDayAndMoveTo(barLables, moveCallback) {
+    const positions = []
+    //http://stackoverflow.com/questions/6858479/rectangle-coordinates-after-transform
+
+    // 通过这个方法获取到每个rect的真实位置属性等
+    yearView.selectAll('rect').each(function(d,i) {
+
+      // 获取每一个rect在真个svg的真实坐标位置，d.x，d.y只是相对的偏移位置
+      var pos = getRelPos(this, svg)
+      pos.cx = pos.x + (dayWidth / 2)
+//      pos.cx = d.x
+      pos.cy = pos.y + (dayHeight / 2)
+//      pos.cy = d.y
+      pos.color = d3.select(this).attr('fill')
+      pos.type = d.type
+      positions.push(pos)
+    })
+
+    console.log('-----positions', positions)
+
+    var textPos = {};
+
+
+    statsView.selectAll('text').each( function(d) {
+      //console.log(d)
+      textPos[d.type] = d;
+    })
+
+    console.log('---textPos', textPos)
+
+
+    const tempG = svg.append('g').attr('class', 'tempG')
+
+    //var tempPos = getRelPos(circpack.node(), svg);
+    //var counter = 0;
+    var counter = false;
+    var maxDur = -Infinity;
+
+    console.log('-----maxDur', maxDur)
+
+    var delayScale = d3.scaleLinear()
+      .domain([0, positions.length])
+      .range([300,2000]);
+
+    /**
+     * 这里需要额外用一个g(tempG)去制造一下rect，而不能选中日历图中的rect, 这些制作出来的rect最后都要被销毁
+     */
+    tempG.selectAll('rect')
+      .data(positions)
+      .enter()
+      .append('rect')
+      .attr('x', d => d.x) // 在日历图中rect的位置
+      .attr('y', d => d.y)
+      .attr('width', dayWidth)
+      .attr('height', dayHeight)
+      .attr('fill', d => d.color)
+      .transition()
+      .delay((d,i) => delayScale(i))
+      .attr('x', d => (textPos[d.type].x + textPos[d.type].w / 2))  // 移动到柱图的中间位置
+      .attr('y', d => (textPos[d.type].offsetY + textPos[d.type].startY))
+      .duration(function(d,i) {
+        /**
+         * 这里用了一个均匀分布来产生一个随机的持续时间
+         * 之所以比用一个固定值是因为测试的时候发现效果很僵硬，所以用了一个随机数的方式，让单个的颗粒感更强烈
+         * 并且还要记录最大的持续时间，这样柱图高度的变化才能有一种同步的感觉
+         */
+        const dur = d3.randomUniform(500, 2000)()
+        if(dur > maxDur) maxDur = dur
+
+        return dur
+      })
+//      .ease(d3.easeQuadIn)
+      .on('end', function() {
+        /**
+         * 这里的counter控制moveCallback只执行一次
+         * 因为这里end会响应几百次, 但是通知bar高度变化只需要一次就行了
+         */
+        if(!counter) {
+          moveCallback(maxDur);
+          counter = true;
+        }
+      })
+      .remove()
+
+  }
+
+  function getRelPos(node, svg) {
+    const m = node.getCTM()  // 似乎和getScreenCTM等价
+    const pos = svg.node().createSVGPoint()
+    pos.x = d3.select(node).attr('x')
+    pos.y = d3.select(node).attr('y')
+    return pos.matrixTransform(m)
+  }
+
+  //Helper functions
+  function isWeekDay(num) {
+    var o = {
+      0: false,
+      1: true,
+      2: true,
+      3: true,
+      4: true,
+      5: true,
+      6: false
+    }
+
+    return o[num];
+  }
+</script>
+</body>
+</html>

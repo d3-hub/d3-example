@@ -384,6 +384,7 @@
 </div>
 
 <script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="companies.js"></script>
 <script>
   // 原图地址：https://codepen.io/ANTINEA/pen/gwbRrd
 
@@ -398,6 +399,38 @@
     formatDollars = function(d) { return (d < 0 ? "-" : "") + "$" + formatNumber(Math.abs(d)).replace(/G$/, "B"); }
 
   const nameAll = '标普500公司'
+
+  const sectorNoteByName = {
+    "Utilities": '公用事业受益于2009年的经济刺激法案，其中包括对资本密集型投资公司（如发电厂）进行减税',
+    "Information technology": '为了会计目的，技术公司经常可以将业务运营到海外而年轻的公司往往有近期的亏损，压低了该行业的整体利率',
+    "Industrials": "与企业部门一样，像<b>波音</b>，<b>卡特彼勒</b>，<b>通用电气</b>和<b>霍尼韦尔</b>这样的大型工业企业平均支付的税额低于小型企业",
+    "Telecom": "<b>Verizon</b>的有效税率低于其竞争对手<b>AT＆T</b>，尽管六年期间的利润相似",
+    "Health care": "在医疗保健范围内，管理式护理公司支付相对较高的税率，设备，供应和技术制造商支付的费用相对较低",
+    "Pharma": "研究减税和在低税国家定位业务的能力帮助制药和生物技术公司缴纳低税",
+    "Consumer products": "平均而言，电影制片厂和包装食品公司支付的费用超过30％。软饮料公司仅支付19％，餐饮公司支付25％",
+    "Materials": "材料行业（化学品，矿物等）体现了税务专家经常提出的一个观点：在行业内，税率差别很大，通常会忽略简单的解释",
+    "Financials": "随着金融公司从危机中复苏，一些已经支付了相对较高的税率",
+    "Retailers": "诸如<b>Bed Bath＆Beyond</b>和<b>Home Depot</b>之类的实体零售商倾向于支付高税率。网上零售商，如<b>亚马逊</b>，面临低利率",
+    "Energy": "大型石油公司通常支付较高的利率，但一些经济学家认为，高利率并不包括强加给社会的污染成本",
+    "Insurance": "许多保险公司支付低于平均水平的费率。但<b>A.I.G.</b> - 其中有83亿美元的损失，同时支付了80亿美元的税收 - 推动该行业的平均水平上涨"
+  }
+
+
+  const taxes = d => d.taxes
+  const earnings = d => d.earnings
+  const rate = (taxes, earnings) => earnings <= 0 ? NaN : taxes / earnings
+  const type = d => {
+    d.x = +d.x;
+    d.y = +d.y;
+    d.cx = +d.cx;
+    d.cy = +d.cy;
+    d.taxes *= 1e6;
+    d.earnings *= 1e6;
+    d.capitalization *= 1e6;
+    return d;
+  }
+
+  /** **********************************************/
 
   // 顶部轴比例尺
   const x = d3.scale.linear()
@@ -488,7 +521,7 @@
 
   /** -------------------------------------------------**/
 
-  d3.tsv("companies.tsv", type, function(error, companies) {
+//  d3.tsv("companies.tsv", type, function(error, companies) {
 
     console.log('--------', companies)
 
@@ -577,6 +610,8 @@
       .style("fill", d => isNaN(d.rate) ? null : z(d.rate))
       .on("mouseover", mouseover)
       .on("mouseout", mouseout)
+
+
 
 
     /** 12段行业描述 ------------------------------------------- **/
@@ -880,7 +915,7 @@
       tip.style("display", "none");
       sectorCompany.filter(".g-active").classed("g-active", false);
     }
-  });
+//  });
 
   // 绘制底部图说明文字和图例等
   function renderChartKey(g) {
@@ -995,43 +1030,6 @@
       });
   }
 
-  function taxes(d) {
-    return d.taxes;
-  }
-
-  function earnings(d) {
-    return d.earnings;
-  }
-
-  function rate(taxes, earnings) {
-    return earnings <= 0 ? NaN : taxes / earnings;
-  }
-
-  function type(d) {
-    d.x = +d.x;
-    d.y = +d.y;
-    d.cx = +d.cx;
-    d.cy = +d.cy;
-    d.taxes *= 1e6;
-    d.earnings *= 1e6;
-    d.capitalization *= 1e6;
-    return d;
-  }
-
-  const sectorNoteByName = {
-    "Utilities": '公用事业受益于2009年的经济刺激法案，其中包括对资本密集型投资公司（如发电厂）进行减税',
-    "Information technology": '为了会计目的，技术公司经常可以将业务运营到海外而年轻的公司往往有近期的亏损，压低了该行业的整体利率',
-    "Industrials": "与企业部门一样，像<b>波音</b>，<b>卡特彼勒</b>，<b>通用电气</b>和<b>霍尼韦尔</b>这样的大型工业企业平均支付的税额低于小型企业",
-    "Telecom": "<b>Verizon</b>的有效税率低于其竞争对手<b>AT＆T</b>，尽管六年期间的利润相似",
-    "Health care": "在医疗保健范围内，管理式护理公司支付相对较高的税率，设备，供应和技术制造商支付的费用相对较低",
-    "Pharma": "研究减税和在低税国家定位业务的能力帮助制药和生物技术公司缴纳低税",
-    "Consumer products": "平均而言，电影制片厂和包装食品公司支付的费用超过30％。软饮料公司仅支付19％，餐饮公司支付25％",
-    "Materials": "材料行业（化学品，矿物等）体现了税务专家经常提出的一个观点：在行业内，税率差别很大，通常会忽略简单的解释",
-    "Financials": "随着金融公司从危机中复苏，一些已经支付了相对较高的税率",
-    "Retailers": "诸如<b>Bed Bath＆Beyond</b>和<b>Home Depot</b>之类的实体零售商倾向于支付高税率。网上零售商，如<b>亚马逊</b>，面临低利率",
-    "Energy": "大型石油公司通常支付较高的利率，但一些经济学家认为，高利率并不包括强加给社会的污染成本",
-    "Insurance": "许多保险公司支付低于平均水平的费率。但<b>A.I.G.</b> - 其中有83亿美元的损失，同时支付了80亿美元的税收 - 推动该行业的平均水平上涨"
-  }
 </script>
 </body>
 </html>

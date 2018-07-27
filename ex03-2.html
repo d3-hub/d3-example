@@ -394,7 +394,7 @@
      *   2. 搜索选中和hover选中circle的方式更改
      *   3. 过滤了很多无用的部分
      *   4. .each("end", function() {})  =>  .on('end', function() {}) 动画结束后的事件
-     *   5.
+     * 【问题】这个图中的circle位置的变幻是通过数据直接得到的，至于这个数据怎么来的不知道，这意味着不通用，因为我不知道圆的位置是怎么算出来的
      */
 
 
@@ -555,7 +555,7 @@
   height = 120 * sectors.length
 
   y.domain(sectors.map(d => d.key))
-    .range([10, height])
+    .range([60, height- 60]) // 这里和原来不一样了，因为方法改变导致计算出的高度都有差异，所以调整了一下
 
   // x轴, 12个x轴, 根据行业划分的时候预览
   svg.append("g")
@@ -756,31 +756,24 @@
   function search(value) {
     if (value) {
       //这里的逻辑是添加g-searching状态，此状态下的所有没有g.match的circle的透明度为0.2, 然后再给匹配到的circle添加g-match状态
-
-
-      var re = new RegExp("\\b" + d3.requote(value), "i");
-//      svg.classed("g-searching", true);
-
       svg.classed("g-searching", true)
 
-//      const matches = svg.selectAll('.g-sector circle')
-//        .filter((d,i) => d.name && d.name.includes(value))
-//        .classed('g-match', true)
+      // 注意这里大小写不敏感，会有问题
+       svg.selectAll('.g-sector circle')
+        .classed('g-match', (d,i) => d.name && d.name.toLowerCase().includes(value.toLowerCase()))
 
-      sectorCompany.classed("g-match", function(d) { return re.test(d.name) || re.test(d.sector) || (d.symbol && re.test(d.symbol)) || (d.alias && re.test(d.alias)); });
-      var matches = d3.selectAll(".g-match");
+      // 改写之后可能引入了一个新问题，比如搜索apple, 原来搜索了一个记录，现在搜出两条记录，有一条是单词中刚好包含apple，这个待定
+      const matches = d3.selectAll(".g-match");
 
       if (matches.data().length === 1) mouseover(matches.datum());
-      else mouseout();
-      searchClear.style("display", null);
+      else mouseout()
 
-
-
+      searchClear.style("display", null)
     } else {
       mouseout();
-      svg.classed("g-searching", false);
-      sectorCompany.classed("g-match", false);
-      searchClear.style("display", "none");
+      svg.classed("g-searching", false)
+      sectorCompany.classed("g-match", false)
+      searchClear.style("display", "none")
     }
   }
 
@@ -1049,7 +1042,7 @@
   function yAxisWrap(g) {
     g.selectAll(".tick text")
       .filter(function(d) {
-//        console.log('---------getComputedTextLength', this.getComputedTextLength())
+        // 判断过长的单词是两个单词组成，判断依据是空格/ getComputedTextLength获取text的宽度
         return /[ ]/.test(d) && this.getComputedTextLength() > margin.left - tickExtension - 10;
       })
       .attr("dy", null)
@@ -1058,7 +1051,7 @@
           .selectAll("tspan")
           .data(d.split(" "))
           .enter().append("tspan")
-          .attr("x", this.getAttribute("x"))
+          .attr("x", this.getAttribute("x")) // getAttribute() 方法返回指定属性名的属性值
           .attr("dy", function(d, i) { return (i * 1.35 - .35) + "em"; })
           .text(function(d) { return d; });
       });
